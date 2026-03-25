@@ -2,240 +2,257 @@
 <html>
 <head>
   <title>QuantEdge AI – PN Labs</title>
-
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
   <style>
     body {
       margin: 0;
-      font-family: Arial, sans-serif;
-      background: #0f172a;
+      font-family: 'Segoe UI', sans-serif;
+      background: linear-gradient(135deg, #020617, #0f172a);
       color: white;
+      display: flex;
     }
 
-    header {
-      padding: 20px;
-      text-align: center;
+    /* SIDEBAR */
+    .sidebar {
+      width: 220px;
       background: #020617;
-      border-bottom: 1px solid #1e293b;
+      padding: 20px;
+      border-right: 1px solid #1e293b;
+      height: 100vh;
     }
 
-    header h1 {
+    .sidebar h2 {
       color: #38bdf8;
-      margin: 0;
     }
 
-    .container {
-      padding: 30px;
-      text-align: center;
+    .sidebar button {
+      width: 100%;
+      margin: 10px 0;
+      padding: 10px;
+      background: #1e293b;
+      border: none;
+      color: white;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+
+    .sidebar button:hover {
+      background: #38bdf8;
+      color: black;
+    }
+
+    /* MAIN CONTENT */
+    .main {
+      flex: 1;
+      padding: 20px;
+    }
+
+    .topbar {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 20px;
     }
 
     input {
       padding: 10px;
-      width: 220px;
-      border-radius: 5px;
+      border-radius: 8px;
       border: none;
-      margin-right: 10px;
+      width: 200px;
     }
 
-    button {
+    button.primary {
       padding: 10px 20px;
       background: #38bdf8;
       border: none;
-      border-radius: 5px;
+      border-radius: 8px;
       cursor: pointer;
       font-weight: bold;
-      margin: 5px;
     }
 
-    button:hover {
-      background: #0ea5e9;
-    }
-
-    #result {
-      margin-top: 30px;
+    /* KPI CARDS */
+    .kpi-container {
       display: flex;
-      flex-wrap: wrap;
-      justify-content: center;
       gap: 20px;
+      margin-bottom: 20px;
     }
 
-    .card {
-      background: #1e293b;
+    .kpi {
+      flex: 1;
+      background: rgba(30,41,59,0.6);
+      backdrop-filter: blur(10px);
       padding: 20px;
       border-radius: 12px;
-      min-width: 250px;
       text-align: center;
-      box-shadow: 0px 0px 10px rgba(0,0,0,0.5);
+    }
+
+    .kpi h2 {
+      margin: 5px 0;
     }
 
     .buy { color: #22c55e; }
     .sell { color: #ef4444; }
     .hold { color: #facc15; }
 
-    .confidence {
-      font-size: 18px;
-      margin-top: 5px;
-    }
-
-    .chart-container {
-      margin-top: 40px;
-      background: #1e293b;
+    /* CHART */
+    .chart-box {
+      background: rgba(30,41,59,0.6);
       padding: 20px;
       border-radius: 12px;
     }
 
-    canvas {
-      max-width: 100%;
+    /* CARDS GRID */
+    #result {
+      margin-top: 20px;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 20px;
     }
 
-    footer {
-      margin-top: 50px;
+    .card {
+      background: rgba(30,41,59,0.7);
+      padding: 20px;
+      border-radius: 12px;
       text-align: center;
-      color: #64748b;
-      font-size: 14px;
     }
+
   </style>
 </head>
 
 <body>
 
-<header>
-  <h1>🚀 QuantEdge AI – PN Labs</h1>
-  <p>AI-Powered Trading Intelligence</p>
-</header>
-
-<div class="container">
-
-  <h2>Stock Analysis Dashboard</h2>
-
-  <input id="symbol" value="AAPL" />
-  <button onclick="getPrediction()">Analyze</button>
+<!-- SIDEBAR -->
+<div class="sidebar">
+  <h2>🚀 QuantEdge</h2>
   <button onclick="loadStocks()">📊 Top Stocks</button>
   <button onclick="loadPortfolio()">💰 Portfolio</button>
+</div>
 
-  <div id="result"></div>
+<!-- MAIN -->
+<div class="main">
 
-  <div class="chart-container">
-    <h3>📈 Price Chart</h3>
+  <div class="topbar">
+    <input id="symbol" value="AAPL">
+    <button class="primary" onclick="getPrediction()">Analyze</button>
+  </div>
+
+  <!-- KPI -->
+  <div class="kpi-container">
+    <div class="kpi">
+      <h4>Prediction</h4>
+      <h2 id="pred">-</h2>
+    </div>
+    <div class="kpi">
+      <h4>Confidence</h4>
+      <h2 id="conf">-</h2>
+    </div>
+    <div class="kpi">
+      <h4>Sentiment</h4>
+      <h2 id="sent">-</h2>
+    </div>
+  </div>
+
+  <!-- CHART -->
+  <div class="chart-box">
     <canvas id="chart"></canvas>
   </div>
 
-</div>
+  <!-- RESULTS -->
+  <div id="result"></div>
 
-<footer>
-  Built for AI-driven trading decisions • QuantEdge AI
-</footer>
+</div>
 
 <script>
 const API = "https://quantedge-api-ob90.onrender.com";
 let chartInstance = null;
 
-function getColorClass(prediction) {
-  if (prediction === "BUY") return "buy";
-  if (prediction === "SELL") return "sell";
-  return "hold";
+/* UPDATE KPI */
+function updateKPI(data) {
+  document.getElementById("pred").innerText = data.prediction;
+  document.getElementById("pred").className = data.prediction.toLowerCase();
+
+  document.getElementById("conf").innerText = data.confidence + "%";
+  document.getElementById("sent").innerText = data.sentiment;
 }
 
-function createCard(symbol, data) {
-  const color = getColorClass(data.prediction);
-
-  return `
-    <div class="card">
-      <h3>${symbol}</h3>
-      <h2 class="${color}">${data.prediction}</h2>
-      <p class="confidence">${data.confidence}% confidence</p>
-      <p>${data.source}</p>
-      <p>Sentiment: ${data.sentiment}</p>
-      <hr>
-      <p>Trend: ${data.reason.trend}</p>
-      <p>Volatility: ${data.reason.volatility.toFixed(4)}</p>
-    </div>
-  `;
-}
-
+/* PREDICTION */
 async function getPrediction() {
   const symbol = document.getElementById("symbol").value;
-  const container = document.getElementById("result");
 
-  container.innerHTML = "Loading...";
+  const res = await fetch(`${API}/predict/${symbol}`);
+  const data = await res.json();
 
-  try {
-    const res = await fetch(`${API}/predict/${symbol}`);
-    const data = await res.json();
-
-    container.innerHTML = createCard(symbol, data);
-
-    loadChart(symbol); // 🔥 load chart automatically
-
-  } catch (err) {
-    container.innerHTML = "Error fetching data";
-  }
+  updateKPI(data);
+  loadChart(symbol);
 }
 
+/* TOP STOCKS */
 async function loadStocks() {
-  const stocks = ["AAPL", "TSLA", "RELIANCE.NS", "TCS.NS", "INFY.NS"];
-  const container = document.getElementById("result");
-
-  container.innerHTML = "Loading...";
-
+  const stocks = ["AAPL","TSLA","RELIANCE.NS","TCS.NS","INFY.NS"];
   let html = "";
 
-  for (let symbol of stocks) {
-    try {
-      const res = await fetch(`${API}/predict/${symbol}`);
-      const data = await res.json();
-      html += createCard(symbol, data);
-    } catch {
-      html += `<div class="card">Error loading ${symbol}</div>`;
-    }
+  for (let s of stocks) {
+    const res = await fetch(`${API}/predict/${s}`);
+    const d = await res.json();
+
+    html += `<div class="card">
+      <h3>${s}</h3>
+      <h2 class="${d.prediction.toLowerCase()}">${d.prediction}</h2>
+      <p>${d.confidence}%</p>
+    </div>`;
   }
 
-  container.innerHTML = html;
+  document.getElementById("result").innerHTML = html;
 }
 
+/* PORTFOLIO */
 async function loadPortfolio() {
-  const container = document.getElementById("result");
-
-  container.innerHTML = "Loading portfolio...";
-
   const res = await fetch(`${API}/portfolio`);
   const data = await res.json();
 
-  let html = "<h2>💰 Portfolio</h2>";
+  let html = "<h2>Portfolio</h2>";
 
-  data.portfolio.forEach(stock => {
-    html += `
-      <div class="card">
-        <h3>${stock.symbol}</h3>
-        <h2>${stock.prediction}</h2>
-        <p>Allocation: ${stock.allocation}%</p>
-      </div>
-    `;
+  data.portfolio.forEach(p => {
+    html += `<div class="card">
+      <h3>${p.symbol}</h3>
+      <p>${p.allocation}%</p>
+    </div>`;
   });
 
-  container.innerHTML = html;
+  document.getElementById("result").innerHTML = html;
 }
 
+/* CHART */
 async function loadChart(symbol="AAPL") {
   const res = await fetch(`${API}/chart/${symbol}`);
   const data = await res.json();
 
   const ctx = document.getElementById("chart").getContext("2d");
 
-  if (chartInstance) {
-    chartInstance.destroy();
-  }
+  if (chartInstance) chartInstance.destroy();
+
+  const gradient = ctx.createLinearGradient(0,0,0,300);
+  gradient.addColorStop(0,"#38bdf8");
+  gradient.addColorStop(1,"transparent");
 
   chartInstance = new Chart(ctx, {
     type: "line",
     data: {
       labels: data.dates,
       datasets: [{
-        label: symbol + " Price",
         data: data.prices,
-        borderWidth: 2
+        borderColor: "#38bdf8",
+        backgroundColor: gradient,
+        fill: true,
+        tension: 0.3
       }]
+    },
+    options: {
+      plugins: { legend: { display: false }},
+      scales: {
+        x: { ticks: { color: "white" }},
+        y: { ticks: { color: "white" }}
+      }
     }
   });
 }
