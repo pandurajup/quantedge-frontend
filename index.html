@@ -1,25 +1,39 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>QuantEdge AI</title>
+  <title>QuantEdge AI – PN Labs</title>
+
   <style>
     body {
-      font-family: Arial;
+      margin: 0;
+      font-family: Arial, sans-serif;
       background: #0f172a;
       color: white;
-      text-align: center;
-      padding: 40px;
     }
 
-    h1 {
+    header {
+      padding: 20px;
+      text-align: center;
+      background: #020617;
+      border-bottom: 1px solid #1e293b;
+    }
+
+    header h1 {
       color: #38bdf8;
+      margin: 0;
+    }
+
+    .container {
+      text-align: center;
+      padding: 30px;
     }
 
     input {
       padding: 10px;
-      width: 200px;
+      width: 220px;
       border-radius: 5px;
       border: none;
+      margin-right: 10px;
     }
 
     button {
@@ -28,59 +42,153 @@
       border: none;
       border-radius: 5px;
       cursor: pointer;
+      font-weight: bold;
+    }
+
+    button:hover {
+      background: #0ea5e9;
+    }
+
+    #result {
+      margin-top: 30px;
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 20px;
     }
 
     .card {
-      margin-top: 30px;
-      padding: 20px;
-      border-radius: 10px;
       background: #1e293b;
-      display: inline-block;
-      min-width: 300px;
+      padding: 20px;
+      border-radius: 12px;
+      min-width: 250px;
+      text-align: center;
+      box-shadow: 0px 0px 10px rgba(0,0,0,0.5);
     }
 
-    .buy { color: #22c55e; }
-    .sell { color: #ef4444; }
-    .hold { color: #facc15; }
+    .card h3 {
+      margin-bottom: 10px;
+      color: #94a3b8;
+    }
+
+    .buy {
+      color: #22c55e;
+    }
+
+    .sell {
+      color: #ef4444;
+    }
+
+    .hold {
+      color: #facc15;
+    }
+
+    .confidence {
+      font-size: 18px;
+      margin-top: 5px;
+    }
+
+    footer {
+      margin-top: 50px;
+      text-align: center;
+      color: #64748b;
+      font-size: 14px;
+    }
   </style>
 </head>
 
 <body>
 
-  <h1>🚀 QuantEdge AI – PN Labs</h1>
+  <header>
+    <h1>🚀 QuantEdge AI – PN Labs</h1>
+    <p>AI-Powered Trading Intelligence</p>
+  </header>
 
-  <input id="symbol" value="AAPL" />
-  <br><br>
+  <div class="container">
 
-  <button onclick="getPrediction()">Get Prediction</button>
+    <h2>Single Stock Analysis</h2>
 
-  <div id="result"></div>
+    <input id="symbol" value="AAPL" placeholder="Enter stock (AAPL, TSLA...)" />
+    <button onclick="getPrediction()">Analyze</button>
+
+    <br><br>
+
+    <button onclick="loadStocks()">📊 Load Top Stocks</button>
+
+    <div id="result"></div>
+
+  </div>
+
+  <footer>
+    Built for AI-driven trading decisions • QuantEdge AI
+  </footer>
 
   <script>
-    async function getPrediction() {
-      const symbol = document.getElementById("symbol").value;
 
-      const res = await fetch(
-        `https://quantedge-api-ob90.onrender.com/predict/${symbol}`
-      );
+    const API = "https://quantedge-api-ob90.onrender.com";
 
-      const data = await res.json();
+    function getColorClass(prediction) {
+      if (prediction === "BUY") return "buy";
+      if (prediction === "SELL") return "sell";
+      return "hold";
+    }
 
-      let colorClass = "hold";
-      if (data.prediction === "BUY") colorClass = "buy";
-      if (data.prediction === "SELL") colorClass = "sell";
+    function createCard(symbol, data) {
+      const color = getColorClass(data.prediction);
 
-      document.getElementById("result").innerHTML = `
+      return `
         <div class="card">
-          <h2 class="${colorClass}">${data.prediction}</h2>
-          <p>Confidence: ${data.confidence}%</p>
-          <p>Source: ${data.source}</p>
+          <h3>${symbol}</h3>
+          <h2 class="${color}">${data.prediction}</h2>
+          <p class="confidence">${data.confidence}% confidence</p>
+          <p>${data.source}</p>
           <hr>
           <p>Trend: ${data.reason.trend}</p>
-          <p>Volatility: ${data.reason.volatility}</p>
+          <p>Volatility: ${data.reason.volatility.toFixed(4)}</p>
         </div>
       `;
     }
+
+    async function getPrediction() {
+      const symbol = document.getElementById("symbol").value;
+      const container = document.getElementById("result");
+
+      container.innerHTML = "Loading...";
+
+      try {
+        const res = await fetch(`${API}/predict/${symbol}`);
+        const data = await res.json();
+
+        container.innerHTML = createCard(symbol, data);
+
+      } catch (err) {
+        container.innerHTML = "Error fetching data";
+      }
+    }
+
+    async function loadStocks() {
+      const stocks = ["AAPL", "TSLA", "RELIANCE.NS", "TCS.NS", "INFY.NS"];
+      const container = document.getElementById("result");
+
+      container.innerHTML = "Loading top stocks...";
+
+      let html = "";
+
+      for (let symbol of stocks) {
+        try {
+          const res = await fetch(`${API}/predict/${symbol}`);
+          const data = await res.json();
+
+          html += createCard(symbol, data);
+
+        } catch (err) {
+          html += `<div class="card">Error loading ${symbol}</div>`;
+        }
+      }
+
+      container.innerHTML = html;
+    }
+
   </script>
 
 </body>
