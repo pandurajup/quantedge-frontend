@@ -3,6 +3,8 @@
 <head>
   <title>QuantEdge AI – PN Labs</title>
 
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
   <style>
     body {
       margin: 0;
@@ -24,8 +26,8 @@
     }
 
     .container {
-      text-align: center;
       padding: 30px;
+      text-align: center;
     }
 
     input {
@@ -43,6 +45,7 @@
       border-radius: 5px;
       cursor: pointer;
       font-weight: bold;
+      margin: 5px;
     }
 
     button:hover {
@@ -66,26 +69,24 @@
       box-shadow: 0px 0px 10px rgba(0,0,0,0.5);
     }
 
-    .card h3 {
-      margin-bottom: 10px;
-      color: #94a3b8;
-    }
-
-    .buy {
-      color: #22c55e;
-    }
-
-    .sell {
-      color: #ef4444;
-    }
-
-    .hold {
-      color: #facc15;
-    }
+    .buy { color: #22c55e; }
+    .sell { color: #ef4444; }
+    .hold { color: #facc15; }
 
     .confidence {
       font-size: 18px;
       margin-top: 5px;
+    }
+
+    .chart-container {
+      margin-top: 40px;
+      background: #1e293b;
+      padding: 20px;
+      border-radius: 12px;
+    }
+
+    canvas {
+      max-width: 100%;
     }
 
     footer {
@@ -99,97 +100,146 @@
 
 <body>
 
-  <header>
-    <h1>🚀 QuantEdge AI – PN Labs</h1>
-    <p>AI-Powered Trading Intelligence</p>
-  </header>
+<header>
+  <h1>🚀 QuantEdge AI – PN Labs</h1>
+  <p>AI-Powered Trading Intelligence</p>
+</header>
 
-  <div class="container">
+<div class="container">
 
-    <h2>Single Stock Analysis</h2>
+  <h2>Stock Analysis Dashboard</h2>
 
-    <input id="symbol" value="AAPL" placeholder="Enter stock (AAPL, TSLA...)" />
-    <button onclick="getPrediction()">Analyze</button>
+  <input id="symbol" value="AAPL" />
+  <button onclick="getPrediction()">Analyze</button>
+  <button onclick="loadStocks()">📊 Top Stocks</button>
+  <button onclick="loadPortfolio()">💰 Portfolio</button>
 
-    <br><br>
+  <div id="result"></div>
 
-    <button onclick="loadStocks()">📊 Load Top Stocks</button>
-
-    <div id="result"></div>
-
+  <div class="chart-container">
+    <h3>📈 Price Chart</h3>
+    <canvas id="chart"></canvas>
   </div>
 
-  <footer>
-    Built for AI-driven trading decisions • QuantEdge AI
-  </footer>
+</div>
 
-  <script>
+<footer>
+  Built for AI-driven trading decisions • QuantEdge AI
+</footer>
 
-    const API = "https://quantedge-api-ob90.onrender.com";
+<script>
+const API = "https://quantedge-api-ob90.onrender.com";
+let chartInstance = null;
 
-    function getColorClass(prediction) {
-      if (prediction === "BUY") return "buy";
-      if (prediction === "SELL") return "sell";
-      return "hold";
+function getColorClass(prediction) {
+  if (prediction === "BUY") return "buy";
+  if (prediction === "SELL") return "sell";
+  return "hold";
+}
+
+function createCard(symbol, data) {
+  const color = getColorClass(data.prediction);
+
+  return `
+    <div class="card">
+      <h3>${symbol}</h3>
+      <h2 class="${color}">${data.prediction}</h2>
+      <p class="confidence">${data.confidence}% confidence</p>
+      <p>${data.source}</p>
+      <p>Sentiment: ${data.sentiment}</p>
+      <hr>
+      <p>Trend: ${data.reason.trend}</p>
+      <p>Volatility: ${data.reason.volatility.toFixed(4)}</p>
+    </div>
+  `;
+}
+
+async function getPrediction() {
+  const symbol = document.getElementById("symbol").value;
+  const container = document.getElementById("result");
+
+  container.innerHTML = "Loading...";
+
+  try {
+    const res = await fetch(`${API}/predict/${symbol}`);
+    const data = await res.json();
+
+    container.innerHTML = createCard(symbol, data);
+
+    loadChart(symbol); // 🔥 load chart automatically
+
+  } catch (err) {
+    container.innerHTML = "Error fetching data";
+  }
+}
+
+async function loadStocks() {
+  const stocks = ["AAPL", "TSLA", "RELIANCE.NS", "TCS.NS", "INFY.NS"];
+  const container = document.getElementById("result");
+
+  container.innerHTML = "Loading...";
+
+  let html = "";
+
+  for (let symbol of stocks) {
+    try {
+      const res = await fetch(`${API}/predict/${symbol}`);
+      const data = await res.json();
+      html += createCard(symbol, data);
+    } catch {
+      html += `<div class="card">Error loading ${symbol}</div>`;
     }
+  }
 
-    function createCard(symbol, data) {
-      const color = getColorClass(data.prediction);
+  container.innerHTML = html;
+}
 
-      return `
-        <div class="card">
-          <h3>${symbol}</h3>
-          <h2 class="${color}">${data.prediction}</h2>
-          <p class="confidence">${data.confidence}% confidence</p>
-          <p>${data.source}</p>
-          <hr>
-          <p>Trend: ${data.reason.trend}</p>
-          <p>Volatility: ${data.reason.volatility.toFixed(4)}</p>
-        </div>
-      `;
+async function loadPortfolio() {
+  const container = document.getElementById("result");
+
+  container.innerHTML = "Loading portfolio...";
+
+  const res = await fetch(`${API}/portfolio`);
+  const data = await res.json();
+
+  let html = "<h2>💰 Portfolio</h2>";
+
+  data.portfolio.forEach(stock => {
+    html += `
+      <div class="card">
+        <h3>${stock.symbol}</h3>
+        <h2>${stock.prediction}</h2>
+        <p>Allocation: ${stock.allocation}%</p>
+      </div>
+    `;
+  });
+
+  container.innerHTML = html;
+}
+
+async function loadChart(symbol="AAPL") {
+  const res = await fetch(`${API}/chart/${symbol}`);
+  const data = await res.json();
+
+  const ctx = document.getElementById("chart").getContext("2d");
+
+  if (chartInstance) {
+    chartInstance.destroy();
+  }
+
+  chartInstance = new Chart(ctx, {
+    type: "line",
+    data: {
+      labels: data.dates,
+      datasets: [{
+        label: symbol + " Price",
+        data: data.prices,
+        borderWidth: 2
+      }]
     }
-
-    async function getPrediction() {
-      const symbol = document.getElementById("symbol").value;
-      const container = document.getElementById("result");
-
-      container.innerHTML = "Loading...";
-
-      try {
-        const res = await fetch(`${API}/predict/${symbol}`);
-        const data = await res.json();
-
-        container.innerHTML = createCard(symbol, data);
-
-      } catch (err) {
-        container.innerHTML = "Error fetching data";
-      }
-    }
-
-    async function loadStocks() {
-      const stocks = ["AAPL", "TSLA", "RELIANCE.NS", "TCS.NS", "INFY.NS"];
-      const container = document.getElementById("result");
-
-      container.innerHTML = "Loading top stocks...";
-
-      let html = "";
-
-      for (let symbol of stocks) {
-        try {
-          const res = await fetch(`${API}/predict/${symbol}`);
-          const data = await res.json();
-
-          html += createCard(symbol, data);
-
-        } catch (err) {
-          html += `<div class="card">Error loading ${symbol}</div>`;
-        }
-      }
-
-      container.innerHTML = html;
-    }
-
-  </script>
+  });
+}
+</script>
 
 </body>
 </html>
